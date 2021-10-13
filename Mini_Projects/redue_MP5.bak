@@ -1,0 +1,1173 @@
+#lang racket
+(require csc151)
+(require rackunit)
+(require racket/undefined)
+
+;; CSC 151.02 (Fall 2020, Term 2)
+;; PROJECT : MiniProject3
+;; https://rebelsky.cs.grinnell.edu/Courses/CSC151/2020Fa2/assignments/project05.html
+;; Author: Liam Walsh
+;; Date:  November -15-2020
+;; Acknowledgements:
+
+;;; citation List of one syllable words used in part 1 came from https://sites.google.com/site/graceguts/stories/a-story-in-100-one-syllable-words
+;;;  https://sites.google.com/site/graceguts/stories/another-story-in-100-one-syllable-words
+;;;, and https://sites.google.com/site/graceguts/stories/spam-yet-another-story-in-100-one-syllable-words
+
+;;;;; citiation
+;;;;  List of common English double vowel sounds used for finding English digraphs
+;;; https://en.wikipedia.org/wiki/Diphthong#:~:text=Technically%2C%20a%20diphthong%20is%20a,diphthongs%2C%20one%20in%20every%20syllable.
+
+;;; citation
+;;; Used for finding concrete vowel counting rules for
+;;;; for determining how many syllables a word has.
+;;; https://www.howmanysyllables.com/howtocountsyllables
+
+;;;;;;;;;;;;;;;;;;;; citation
+;;;;;;;;;;;;;;;;;;;; sourcee used the to help find near rymes
+;;;;;;;;;;;;;;;;;; <https://www.rhymezone.com/>
+
+;;;;;;;;;;;;;;;;;;;; citation
+;;;;;;;;;;;;;;;;;;;; adtional sourcee used to better understand rymeing subtypes 
+;;;;;;;;;;;;;;;;;;;; <https://literaryterms.net/rhyme/>
+
+;;;;;;;;;;;;;;;; citation
+;;;; source  on limeric poem style that was consulted in this project comes from
+;;;;;;; <https://poets.org/glossary/limerick>
+
+;;;;;;;;;;; citation
+;;;;;;;;;; jane eyre text comes from <http://www.gutenberg.org/files/1260/1260-0.txt>
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;; helper proecdures used boardly in the lab
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; (contain-period? str)->boolean?
+;;; str: string?
+;;; returns #t if inputted word contains period
+;;;
+;;; coppied from mini project 3 code
+(define contain-period?
+  (lambda (str)
+    (equal? (string-ref str (-(string-length str)1))#\.)))
+
+;;; (empty-string? str)->booleon?
+;;; str-string?
+;;; returns #t if inputted string is empty
+;;;
+;;; coppied from MINI PROJECT 3
+(define empty-string?
+  (lambda(str)
+    (not (equal? 0 (string-length str)))))
+
+;;; (remove-punctuation str)->string?
+;;; str: string?
+;;; returns word with any punctuation marks removed.
+;;;
+;;; copied from mini project 3 code
+(define remove-punctuation
+  (lambda (str)
+    (let ([last-char (string-ref str (- (string-length str) 1))]
+          [first-char (string-ref str 0)]
+          [word-minus-end-punctuation (substring str 0 (- (string-length str) 1))]
+          [word-minus-beggining-punctuation (substring str 1 (string-length str))]) 
+      (cond
+        [(equal? last-char #\.)
+         word-minus-end-punctuation]
+        [(equal? last-char #\-)
+         word-minus-end-punctuation]
+        [(equal? last-char #\,)
+         word-minus-end-punctuation]
+        [(equal? last-char #\?)
+         word-minus-end-punctuation]
+        [(equal? last-char #\!)
+         word-minus-end-punctuation]
+        [(equal? last-char #\:)
+         word-minus-end-punctuation]
+        [(equal? last-char #\;)
+         word-minus-end-punctuation]
+        [(equal? last-char #\})
+         word-minus-end-punctuation]
+        [(equal? last-char #\')
+         word-minus-end-punctuation]
+        [(equal? last-char #\))
+         word-minus-end-punctuation]
+        [(equal? last-char #\])
+         word-minus-end-punctuation]
+        [(equal? last-char #\])
+         word-minus-end-punctuation]
+        [(equal? first-char #\()
+         word-minus-beggining-punctuation]
+        [(equal? first-char #\")
+         word-minus-beggining-punctuation]
+        [(equal? first-char #\')
+         word-minus-beggining-punctuation]
+        [(equal? first-char #\))
+         word-minus-end-punctuation]
+        [(equal? first-char #\[)
+         word-minus-beggining-punctuation]
+        [(equal? first-char #\{)
+         word-minus-beggining-punctuation]
+        [else
+         (substring str 0 (string-length str))]))))
+
+;;; (remove-compound-puncuation str)->string?
+;;; str string?
+;;; removes puncuation ocurances when punction is imeadtly followed by a quotation mark
+(define remove-compound-puncuation
+  (lambda (str)
+    (let ([last-char (string-ref str (- (string-length str) 1))]
+          [first-char (string-ref str 0)]
+          [word-minus-end-punctuation (substring str 0 (- (string-length str) 1))]
+          [word-minus-beggining-punctuation (substring str 1 (string-length str))]
+          [string-greater-2 (>= (string-length str) 2)])
+      (cond
+        [ (and string-greater-2
+               (equal? (string-ref str (- (string-length str) 2))#\.)
+               ( equal? last-char #\'))
+          (substring str 0 (- (string-length str) 2))]
+        [ (and string-greater-2
+               (equal? (string-ref str (- (string-length str) 2))#\.)
+               ( equal? last-char #\"))
+          (substring str 0 (- (string-length str) 2))]
+        [ (and string-greater-2
+               (equal? (string-ref str (- (string-length str) 2))#\?)
+               ( equal? last-char #\"))
+          (substring str 0 (- (string-length str) 2))]
+        [ (and string-greater-2
+               (equal? (string-ref str (- (string-length str) 2))#\!)
+               ( equal? last-char #\"))
+          (substring str 0 (- (string-length str) 2))]
+        [(and string-greater-2
+              (equal? (string-ref str (- (string-length str) 2)) #\?)
+              ( equal? last-char #\'))
+         (substring str 0 (- (string-length str) 2))]
+        [else
+         (substring str 0 (string-length str))]))))
+ 
+;;; (str->list-remove-punctuation str)->list?
+;;; str: string?
+;;; returns list of words without periods and other punctuation marks.
+;;;
+;;; copied from mini project 3
+(define str->list-remove-punctuation
+  (lambda (str)
+    (map remove-punctuation (map remove-compound-puncuation
+                                 (filter empty-string? (string-split str" "))))))
+
+;;; (random-elt lst)->any?
+;;; lst : listof any?
+;;; Randomly select an element of `lst`
+;;;
+;;; coppied from my randomness lab
+(define random-elt
+  (lambda (lst)
+    (list-ref lst (random (length lst)))))
+
+(define jane-eyre (file->string "Jane Eyre.txt"))
+
+(define unique-jane (string-replace
+                     (string-replace jane-eyre "\r" "") "\n" ""))
+
+(define jane-list (str->list-remove-punctuation unique-jane))
+
+;;;;;;;; part 1 Haiku
+;;;;;;;; note made this before Sam R switched intructions for part. 1 he
+;;;;;;;;; said it was ok to not change to new way.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define one-syllable-words (filter empty-string?(file->lines "single-sylable-words.txt")))
+
+;;; acknowledgement list of words came from https://en.wiktionary.org/wiki/Category:English_2-syllable_words
+(define two-syllable-words (filter empty-string?(file->lines "two-syllable-word-list.txt")))
+
+;;; acknowledgement list of words came from https://en.wiktionary.org/w/index.php?title=Category:English_3-syllable_words
+(define three-syllable-words (filter empty-string?(file->lines "three-sylable-words.txt")))
+
+;;; acknowledgement list of words came from https://en.wiktionary.org/w/index.php?title=Category:English_4-syllable_words
+(define four-syllable-words (filter empty-string?(file->lines "four-syllable-words-list.txt")))
+
+;;; acknowledgement list of words came from https://en.wiktionary.org/w/index.php?title=Category:English_5-syllable_words
+(define five-syllable-words (filter empty-string?(file->lines "five-syllable-words.txt")))
+
+;;; (two-syllable-group)->string?
+;;; returns string of two syllable words.
+(define two-syllable-group
+  (lambda ()
+    ( let ([ random-determinet (random 2)])
+       (cond
+         [( = random-determinet 0)
+          (string-append (random-elt one-syllable-words)" "(random-elt one-syllable-words))]
+         [ (= random-determinet 1)
+           (random-elt two-syllable-words)]
+         [else
+          "therese an error"]))))       
+    
+;;; (three-syllable-group ())->strings?
+;;; returns a three syllable word group in random fashion each time the procedure is called.
+(define three-syllable-group
+  (lambda ()
+    ( let ([ random-determinet (random 4)]
+           ;; use chose long word to medigate random-determinets bias.
+           [ chose-long-word (random 4)])
+       (cond
+         [(and (= 0 chose-long-word )( = random-determinet 0))
+          (string-append (two-syllable-group)" "
+                         (random-elt one-syllable-words)" "
+                         (random-elt one-syllable-words))]
+         [ (and (= chose-long-word 0)( = random-determinet  1))
+           (string-append (random-elt one-syllable-words) " "
+                          (random-elt one-syllable-words)" "
+                          (two-syllable-group))]
+         [ (and (= 0 chose-long-word )(= random-determinet 2))
+           (string-append (random-elt one-syllable-words)" "
+                          (random-elt one-syllable-words)" "
+                          (random-elt one-syllable-words))]
+         [ (and (<= 1 chose-long-word 3)  (= random-determinet 3))
+           (string-append (random-elt three-syllable-words))]   
+         [else
+          (three-syllable-group)]))))
+
+;;; (four-syllable-group)->string?
+;;; returns string of words that are
+(define four-syllable-group
+  (lambda ()
+    ( let ([ random-determinet (random 4)]
+           [ chose-long-word (random 3)])
+       (cond
+         [ (and (= 0 chose-long-word )
+                ( = random-determinet 0))
+           (string-append (random-elt one-syllable-words)" "( three-syllable-group) )]
+         [ (and  (= 0 chose-long-word )
+                 ( = random-determinet  1))
+           (string-append ( three-syllable-group)" "(random-elt one-syllable-words))]
+         [ (and (= 1 chose-long-word )
+                (= random-determinet 2))
+           (string-append ( two-syllable-group) " " ( two-syllable-group))  ]
+         [ (and (< 1 chose-long-word 3)
+                (= random-determinet 3))
+           (random-elt four-syllable-words)]
+         [else
+          (four-syllable-group) ]))))
+
+;;; (five-syllable-group)->string?
+;;; returns list of five syllable words
+(define five-syllable-group
+  (lambda ()
+    ( let ([ random-determinet (random 5)]
+           [ chose-long-word (random 5)])
+       (cond
+         [ (and (= chose-long-word 0) ( = random-determinet 0))
+           (string-append(random-elt one-syllable-words) " "( four-syllable-group))]
+         [ (and (= chose-long-word 0) ( = random-determinet 1))
+           (string-append ( four-syllable-group) " "(random-elt one-syllable-words))]
+         [ (and (= chose-long-word 1) ( = random-determinet 2))
+           
+           (string-append ( two-syllable-group) " "( three-syllable-group))]
+         [ (and (= chose-long-word 1) ( = random-determinet 3))
+           (string-append ( three-syllable-group) " " ( two-syllable-group) )]
+         [ (and (> chose-long-word 1) ( = random-determinet 4))
+           (string-append (random-elt five-syllable-words) )]
+         [else 
+          (five-syllable-group)]))))
+
+;;; (seven-syllable-group)->string?
+;;; returns list of seven syllable words
+(define seven-syllable-group
+  (lambda ()
+    ( let ([ random-determinet (random 1)])
+       (if (= random-determinet 1)
+           (string-append (five-syllable-group)" "( two-syllable-group))
+           (string-append (two-syllable-group)" "(five-syllable-group))))))
+
+;;; (haiku)->string?
+;;; returns a really bad haiku poem that is  biased to short words
+(define haiku
+  (lambda ()
+    (display (string-append (five-syllable-group) "\n"( seven-syllable-group)
+                            "\n" (five-syllable-group)))))
+
+;;; (haiku-2)->string?
+;;; returns a really bad haiku poem that is  less biased to short words                      
+(define haiku-2
+  (lambda ()
+    (let ([top  (five-syllable-group)]
+          [middle (seven-syllable-group)]
+          [bottom (five-syllable-group)])
+      (if (or(and (> 4 (length (list top)))
+                  (> 4 (length (list bottom))))
+             (= 7 (length (list middle)))
+             (> 3(length (list bottom)))
+             (and (> 4 (length (list middle)))
+                  (> 4(length (list bottom)))))
+          (display (string-append top "\n" middle "\n" bottom ))
+          (haiku-2)))))
+     
+;;;;;;;;;;;;;;;;;;;
+;;;;; part 2
+;;;;;;;;;;;;;;;;;
+
+;;; (remove-duplicates-helper lst helper)->list
+;;; lst, list?
+;;; helper,list? which keeps track of recursion result so far.
+;;; removes all duplicate items from a list.
+(define remove-duplicates-helper
+  (lambda (lst helper)
+    (cond
+      [(or (null? lst) (null? (cdr lst)))
+       (append (reverse helper) lst) ]
+      [(equal? (car lst) (cadr lst))
+       (remove-duplicates-helper (cdr lst) helper)]
+      [else
+       (remove-duplicates-helper (cdr lst)(cons(car lst) helper))])))
+
+;;; (remove-duplicates lst)->list?
+;;; lst: list?
+;;; returns implementation of remove-duplicates-helper.
+(define remove-duplicates
+  (lambda (lst)
+    (remove-duplicates-helper lst null)))
+
+;;; (unique-words str)->string?
+;;; str:string?
+;;; returns the list of unique words that are present in a given string. 
+(define unique-words
+  (lambda (str)
+    (remove-duplicates (sort (map string-downcase (string-split str " ")) string-ci<?))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;; part 3 count syllables
+;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; (syllable-count-single-vowel-rules str)->integer?
+;;; str: is a list 
+;;; returns number of standard vowels that appear in an English word.
+(define syllable-count-single-vowel-rules
+  (lambda (str)
+    (let ([number-a (filter (section char-ci=? <> #\a) (string->list str ))]
+          [number-e (filter (section char-ci=? <> #\e) (string->list str ))]
+          [number-i (filter (section char-ci=? <> #\i) (string->list str ))]
+          [number-o (filter (section char-ci=? <> #\o) (string->list str ))]
+          [number-u (filter (section char-ci=? <> #\u) (string->list str ))]
+          [number-y (filter (section char-ci=? <> #\y) (string->list str ))]
+          [word-ends-in-e (equal? #\e (string-ref str (- (string-length str) 1)))]
+          [word-ends-in-y (equal? #\y (string-ref str (- (string-length str) 1)))])
+      (cond
+        ;; case of silennt e at end of word. need to subtract 1
+        [(and (not (= (string-length str) 0)) word-ends-in-e)            
+         (-(+ (length number-u) (length number-o)
+              (length number-i)  (length number-e)  (length number-a)) 1)]
+        ;; case of y at end of word. need to count y's as a vowel
+        [ (and (not (= (string-length str) 0)) word-ends-in-y)
+          (+ (length number-y) (length number-u)
+             (length number-o) (length number-i) (length number-e) (length number-a))] 
+        [else
+         (+ (length number-u) (length number-o) (length number-i)
+            (length number-e) (length number-a))]))))
+             
+;;; (count-digraph-pattern lst char-first char-second)->integer?
+;;; lst: list?
+;;; char first: character? first sound of digraph.
+;;; char Second: character? Second sound of digraph.
+;;; returns how often double vowel digraph. Ocurs in list of characters.
+(define count-digraph-pattern
+  (lambda (lst char-first char-second)
+    (cond
+      [(null? lst)
+       0]
+      [(null? (cdr lst))
+       0]
+      [ (and (pair? lst)
+             (char-ci=? char-second (car (cdr lst)))
+             (char-ci=? char-first (car lst)))
+        1]
+      [ else
+        (count-digraph-pattern (cdr lst) char-first char-second)])))
+
+;;; (digraph-count str)->number?
+;;; str, a string?
+;;; returns the number of digraphs (double vowels) are present in a given word
+(define digraph-count
+  (lambda (str)
+    (let ([number-ai (count-digraph-pattern (string->list str ) #\a #\i)]
+          [number-ay (count-digraph-pattern (string->list str ) #\a #\y)]
+          [number-ou (count-digraph-pattern (string->list str ) #\o #\u)]
+          [number-oi (count-digraph-pattern (string->list str ) #\o #\i)]
+          [number-oo (count-digraph-pattern (string->list str ) #\o #\o)]
+          [number-ee (count-digraph-pattern (string->list str ) #\e #\e)]
+          [number-ea (count-digraph-pattern (string->list str ) #\e #\a)]) 
+      (+ number-ai number-ay number-ou
+         number-oi number-oo number-ee number-ea))))
+
+;;; (syllable-count)->integer?
+;;; word,string? of a word
+;;; returns estimated syllable count for a word
+(define syllable-count
+  (lambda (word)
+    (- (syllable-count-single-vowel-rules word) (digraph-count word))))
+
+;;; (random-5-eyre)->string?
+;;; returns random 5 syllable word from jane eyre
+(define random-5-eyre
+  (lambda ()
+    (random-elt (filter (o(section = <> 5 ) syllable-count) jane-list))))
+
+;;; (random-7-eyre)->string?
+;;; returns random 7 syllable word from jane eyre
+(define random-7-eyre
+  (lambda ()
+    (random-elt (filter (o(section = <> 7 ) syllable-count) jane-list))))
+
+;;; (jane-eyere-haiku)->string
+;;; returns random geneation of jane eyere hakiku
+(define jane-eyere-haiku
+  (lambda ()
+    (display (string-append (random-5-eyre) "\n" (random-7-eyre) "\n" (random-5-eyre)))))
+
+;;;;;;;;;;;;;;;;;;;;; part 4;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;  counting rymes
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; (might-rhyme-helper-2letter-words word1 word 2)-->Boolean?
+;;; word1: string?
+;;; word2: string?
+;;; returns true if one of the words is at least two letters,
+;;; and matches the last two letters of the other word
+(define might-rhyme-helper-2letter-words
+  (lambda (word1 word2)
+    (let*([last-letters-match (equal?
+                               (string-ref word2 (- (string-length word2) 1))
+                               (string-ref word1 (- (string-length word1) 1)))]
+          [ second-last-letters-match? (equal? (string-ref word2 (- (string-length word2) 2))
+                                               (string-ref word1 (- (string-length word1) 2)))]  
+          [ryme? (and last-letters-match
+                      second-last-letters-match?)])
+      ryme?)))
+
+;;; (might-rhyme-helper-atleast-3letter-words word1 word 2)-->boolean?
+;;; word1: string?
+;;; word2: string?
+;;; returns true if one of the words is at least three letters,
+;;; and matches at least the last letter of the second word.
+(define might-rhyme-helper-atleast-3letter-words
+  (lambda (word1 word2)
+    (let*([last-letters-match (equal? (string-ref word2 (- (string-length word2) 1))
+                                      (string-ref word1 (- (string-length word1) 1)))]
+          [ second-last-letters-match? (equal? (string-ref word2 (- (string-length word2) 2))
+                                               (string-ref word1 (- (string-length word1) 2)))]
+          [ third-last-letters-match? (equal? (string-ref word2 (- (string-length word2) 3))
+                                              (string-ref word1 (- (string-length word1) 3)))]
+          [ryme? (and last-letters-match
+                      second-last-letters-match?
+                      third-last-letters-match?)])
+      ryme?)))
+  
+;;; (might-rhyme? word1 word2)->boolean?
+;;; word1: string?
+;;; word2: string?
+(define might-rhyme?
+  (lambda (word1 word2)
+    (let ([check-last-char-equal (equal? (string-ref word2 (- (string-length word2) 1))
+                                         (string-ref word1 (- (string-length word1) 1)))])
+      (cond
+        [(or (=  (string-length word2) 1)
+             (= 1 (string-length word1)))
+         check-last-char-equal]     
+        [(or (= (string-length word2) 2)
+             (= 2(string-length word1))) 
+         (might-rhyme-helper-2letter-words word1 word2)]
+        [else
+         (might-rhyme-helper-atleast-3letter-words word1 word2)]))))
+
+;;; (rhyme word 1 word 2)->boolean
+;;; word2: string
+;;; word1:string?
+;;; a procedure that checks if words rhyme with at least the acuracy of might-rhyme
+(define rhyme?
+  (lambda (word1 word2)
+    (might-rhyme? word1 word2)))
+
+;;; (rhymes-with word words)->list?
+;;; word: string?
+;;; words: a list?
+;;; returns list of words that rhymes with inputted word
+(define rhymes-with
+  (lambda (word words)
+    (filter (section might-rhyme? word <>) words)))
+
+;;; (abab words)->string?
+;;; words: list?
+;;; returns string of words with every other word rhyming 
+(define abab
+  (lambda (words)
+    (let* ([a-1  (random-elt words)]
+           [a-2  (random-elt (rhymes-with a-1 words))]
+           [b-1  (random-elt words)]
+           [b-2  (random-elt (rhymes-with b-1 words))])
+      (string-append a-1 " " b-1 " " a-2 " " b-2))))
+
+;;; words that fail test but  rhyme
+(check-equal? (might-rhyme? "cat" "sat")
+              #f "base case three letters")
+(check-equal? (might-rhyme? "ran" "can")
+              #f "base case three letters")
+(check-equal? (might-rhyme? "sky" "fly")
+              #f "base case three letters")
+(check-equal? (might-rhyme? "rap" "tap")
+              #f "base case three letters")
+(check-equal? (might-rhyme? "pub" "rub")
+              #f "base case three letters")
+(check-equal? (might-rhyme? "cub" "tub")
+              #f "base case three letters")
+(check-equal? (might-rhyme? "rap" "cap")
+              #f "base case three letters")
+(check-equal? (might-rhyme? "sub" "tub")
+              #f "base case three letters")
+(check-equal? (might-rhyme? "cry" "fly")
+              #f "base case three letters")
+
+;;; pairs of words that pass the test and  dont rhyme
+(check-equal? (might-rhyme? "conferring" "ring")
+              #t "base case near ryme word")
+(check-equal? (might-rhyme? "during" "ring")
+              #t "base case near ryme word")
+(check-equal? (might-rhyme? "tracking" "ring")
+              #t "base case near ryme word")
+(check-equal? (might-rhyme? "transfering" "ring")
+              #t "base case near ryme word")
+(check-equal? (might-rhyme? "conforming" "ring")
+              #t "base case near ryme word")
+(check-equal? (might-rhyme? "retrack" "black")
+              #t "base case near ryme word")
+(check-equal? (might-rhyme? "atack" "black")
+              #t "base case near ryme word")
+(check-equal? (might-rhyme? "inner" "banner")
+              #t "base case three letters")
+
+;;;;;;;;;;;;;;;;;;;;; part 5  ;;;;;;
+;;;;;;;;;;;;;;;;;;;;  sentances ;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; (word-minus-end-punctuation str)
+;;; str:string?
+;;; returns word without end punctuation
+(define word-minus-end-puncutation
+  (lambda (str)
+    (substring str 0 (- (string-length str) 1))))
+
+;;; (sentence-ends str)->list?
+;;; str: string?
+;;; returns list of words that ends sentences if given string has them.
+(define sentence-ends
+  (lambda (str)
+    (let* ([string-lst (string-split str " ")]
+           [rid-spaces (filter empty-string? string-lst)])                  
+      (map word-minus-end-puncutation (filter contain-period? rid-spaces)))))
+
+;;; (left-neighbors-helper word so-far lst)->list?
+;;; word: string?
+;;; so-far: list? of recursion result.
+;;; lst: list? of words with punctuation removed.                  
+;;; tail recursive implementation of left-neighbors procedure
+(define left-neighbors-helper
+  (lambda (word so-far lst)
+    (cond
+      [(or (not (pair? lst)) (null? (cdr lst)))
+       so-far]
+      [(equal? word (car (cdr lst))) 
+       (left-neighbors-helper word (cons (list-ref lst (index-of lst (car lst))) so-far)
+                              (cdr (cdr lst)))]
+      [else
+       (left-neighbors-helper word so-far (cdr lst))])))
+
+;;; (left-neighbors word str)->list?
+;;; word, string?
+;;; str, string?
+;;; returns word left to words that are immediately before given word
+(define left-neighbors
+  (lambda (word str)
+    (left-neighbors-helper word null (str->list-remove-punctuation str))))
+
+;;; (random-sentence str)->string?
+;;; str:string?
+;;; makes a really bad random sentence with words from the inputed string
+(define random-sentence 
+  (lambda (str)
+    (let* ([lst-a (sentence-ends str)]
+           [word-a  (random-elt lst-a)]
+           [lst-b (left-neighbors word-a str)]
+           [word-b (random-elt lst-b)]
+           [lst-c (left-neighbors word-b str)]
+           [word-c (random-elt lst-c)]
+           [lst-d (left-neighbors word-c str)]
+           [word-d (random-elt lst-d)]
+           [lst-e (left-neighbors word-d str)]
+           [word-e (random-elt lst-e)]
+           [lst-f (left-neighbors word-e str)]
+           [word-f (random-elt lst-f)])
+      (string-append word-a " " word-b " " word-c " " word-d " " word-e " " word-f "."))))
+          
+;;; (right-neighbors-helper word so-far lst)->list?
+;;; word: string?
+;;; so-far: list? of recursion result.
+;;; lst: list? of words with punctuation removed.                  
+;;; tail recursive implementation of right-neighbors procedure.
+(define right-neighbors-helper
+  (lambda (word so-far lst)
+    (cond
+      [(not (pair? (cdr lst)))
+       so-far]
+      [  (equal? word (car lst))
+         (right-neighbors-helper word
+                                 (cons (list-ref lst (index-of lst (car (cdr  lst)))) so-far)
+                                 (cdr (cdr lst)))]
+      [else
+       (right-neighbors-helper word so-far (cdr lst))])))
+
+;;; (right-neighbors word words)->list?
+;;; word, string?
+;;; words, string?
+;;; returns list of words that immediately follow word  
+(define right-neighbors
+  (lambda (word words )
+    (right-neighbors-helper word null (str->list-remove-punctuation words))))
+
+;;;;;;;;;;;;;;;;;;;;; part 6 limeric form;;;;;
+;;;;;;;;;;;;;;;;;;;;  counting rymes;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; (bad-limerick words)->string?
+;;; words.:list? probably a large list of words.
+;;; returns a beyond horrible limerick in the rhyme scheme of aa-bb-a.
+(define bad-limerick
+  (lambda (words)    
+    (let*
+        ;; generates line 1,2,and 5  of poem
+        ([a-1  (random-elt words)]
+         [a-2  (random-elt words)]
+         [a-3  (random-elt words)]
+         [a-4  (random-elt words)]
+         [a-5  (random-elt words)]
+         [a-6  (random-elt words)]
+         [a-7  (random-elt words)]
+         [a-8  (random-elt words)]
+         [a-2-1  (random-elt words)]
+         [a-2-2  (random-elt words)]
+         [a-3-2  (random-elt words)]
+         [a-2-4  (random-elt words)]
+         [a-2-5  (random-elt words)]
+         [a-2-6  (random-elt words)]
+         [a-2-7  (random-elt words)]
+         [a-2-8  (random-elt (rhymes-with a-8 words))]
+         ;;; appendnd the randomly generated words into lines of tect
+         [a-1 (string-append  a-1 " "a-2" " a-3" " a-4" "
+                              a-5" " a-6" " a-7" " a-8 "\n")]
+         [a-2 (string-append  a-2-1" " a-2-2" " a-3-2" " a-2-4" "
+                              a-2-5 " " a-2-6" " a-2-7 " "a-2-8 "\n")]
+         ;;; generates b section of lymric which is line 3 and 4 of poem
+         [b-1 (random-elt words)]
+         [b-2  (random-elt words)]
+         [b-3  (random-elt words)]
+         [b-4  (random-elt words)]
+         [b-2-1 (random-elt words)]
+         [b-2-2 (random-elt words)]
+         [b-2-3 (random-elt words)]
+         [b-2-4 (random-elt (rhymes-with b-4 words))]
+         ;; apend list of words into lines of text
+         [b-1 (string-append  b-1 " " b-2 " " b-3 " " b-4  "\n")]
+         [b-2 (string-append b-2-1 " " b-2-2 " "b-2-3 " " b-2-4  "\n")])
+      
+      (display (string-append a-1 a-2  b-1 b-2 a-1)))))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; tests ;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;;; a really fun horrible lymric I would like to show off
+#|
+stout have those to name that before must
+sheepishly to after trees to right shook just
+she part of moment
+and done a accident
+stout have those to name that before must
+|#
+
+;;; note all tests and output expirments are structured by program order
+;;; so part 1 tests and expirments first .... part 6 tests and expirments apear last.
+
+#|
+;; output two syllable group  expeirments
+> (two-syllable-group)
+"ladder"
+> (two-syllable-group)
+"lacrosse"
+> (two-syllable-group)
+"mainly"
+> (two-syllable-group)
+"grew ate "
+> (two-syllable-group)
+"laddie"
+|#
+
+#| expermiental tests for three sylable group to check that it works
+
+>  (three-syllable-group)
+"Harpenden"
+>  (three-syllable-group)
+"blue  Dan’s Lacombe"
+>  (three-syllable-group)
+"safe not eighth "
+>  (three-syllable-group)
+"happier"
+>  (three-syllable-group)
+"mainful dog a "
+>  (three-syllable-group)
+"piece  the abbey"
+>  (three-syllable-group)
+"of on face "
+>  (three-syllable-group)
+"harmony"
+>  (three-syllable-group)
+"labour when But "
+>  (three-syllable-group)
+"abearance"
+|#
+
+#|
+;;; output tests for four syllables
+> (four-syllable-group)
+"at piece  labour"
+> (four-syllable-group)
+"hallucinate"
+> (four-syllable-group)
+"blue and  law third "
+> (four-syllable-group)
+"paranoia"
+> (four-syllable-group)
+"ecodefence" |#
+#|
+output tests for five syllable group
+> (five-syllable-group)
+"some haemopoiesis"
+> (five-syllable-group)
+"manufacturer"
+> (five-syllable-group)
+"dressed good  laches looked"
+> (five-syllable-group)
+"kagwang abate poor"
+> (five-syllable-group)
+"sirs paranoia"
+> (five-syllable-group)
+"manipulative"
+> (five-syllable-group)
+"abiogenist"
+> (five-syllable-group)
+"little emperor"
+|#
+
+;;; output tests for seven syllable group
+#|
+> (seven-syllable-group)
+"laddie the mainly lacis"
+>  (seven-syllable-group)
+"act no  ecchymosis It"
+>  (seven-syllable-group)
+"abbey abbreviature"
+>  (seven-syllable-group)
+"dog said  piece for knew Next eighth "
+>  (seven-syllable-group)
+"labors abdominally"
+>  (seven-syllable-group)
+"abduced should harbinger It"
+>  (seven-syllable-group)
+"Kale traditionally"
+>  (seven-syllable-group)
+"lacrosse mainer warm  not Bob they "
+>  (seven-syllable-group)
+"laddish totalitarian"
+> 
+|#
+
+;;;; hakiu test experiment output
+#|
+> (haiku)
+look seem for mainline
+abbes longilateral
+had abelmusk fourth
+> (haiku)
+manipulative
+kahal in histrionics
+Harlington Abba
+
+> (haiku)
+Maidstone looked dog safe
+more some Aberdeenshire
+Kaiser though face mainful
+> (haiku)
+longitudinal
+abdest Dine as maguro
+in this lacy not
+> (haiku)
+abiraterone
+lactic trachelorrhaphy
+Manichaeism
+> (haiku)
+traducianism
+labors mainly harassment
+lacking warm Dine deed a
+> (haiku)
+manufactory
+dressed no aberrational
+men sirs labyrinth grew But
+> (haiku)
+nancyboy Last too
+I when piece Halkomelem
+logological
+> (haiku)
+a harnesses out
+look ate what Dine they dog law
+Aberdonian
+> (haiku)
+marginalia
+bad since though grew his eat ninth
+tenth mainline so eighth
+> (haiku)
+happier kahal
+labium abbreviature
+local government
+> (haiku)
+act abhorrence dressed
+labors dressed seem eat eighth Yet a
+warm dog Magnesian
+> (haiku)
+tenth madarotic
+mailman abecedary
+luminescences
+|#
+
+;;;;;;;;;;;ouyput tests for (haiku-2)
+#|
+>  (haiku-2)
+kaiju harridan
+this third ludomusical
+marginalia
+>  (haiku-2)
+kaizen mahurat
+Dine cops tralatitiously
+this in haricot
+>  (haiku-2)
+abbreviature
+Last should abiogenist
+traceability
+>  (haiku-2)
+manufactory
+though left I’ve sick night eat Dine
+abjuratory
+>  (haiku-2)
+logotherapy
+maiden ninth warm magnetoid
+ablativity
+>  (haiku-2)
+labours magistrates
+abduced Hardcastle my me
+labral right That fifth eat
+>  (haiku-2)
+abduced labret and
+to ate Abeokuta
+aberrationally
+>  (haiku-2)
+transamination
+of law Torontonian
+dressed eat abhorrent
+>  (haiku-2)
+magnalium There man
+lacking Next got Haringey
+abiogenist
+>  (haiku-2)
+when pari-mutuel
+laches in his Kale blue
+local government
+>  (haiku-2)
+Torontonian
+There poor magnify sirs Vile
+masculinity
+>  (haiku-2)
+safe me haroseth
+lactose local government
+though warm as mailman
+>  (haiku-2)
+man Dine Next no men
+knocked But thing parameter
+got historians
+>  (haiku-2)
+Kaifeng labor Bob now
+laddish safe Bob warm thing Yet this
+this on some a though more
+>  (haiku-2)
+magnetic do act
+Ladakh some edentulous
+when of pet not Vile
+>  (haiku-2)
+manufacturing
+mails harissa lacing
+and the no There Spot
+>  (haiku-2)
+litterateur
+kaiju abiotrophy
+law parentheses
+> 
+|#
+
+
+;;;; tests for remove-duplicates
+ 
+(check-equal? (remove-duplicates '(1 2 3 4 5 9 9 8 8 0 0  )) '(1 2 3 4 5 9 8 0) "base case")
+(check-equal? (remove-duplicates '( )) '() "edge check empty list is returned")
+(check-equal? (remove-duplicates '( "hi" "hi")) '("hi") "edge check empty list is returned")
+
+;;;  tests for unique words 
+(check-equal?  (unique-words "hi mom and dad and mom") '("and" "dad" "hi" "mom") "check with base case")
+(check-equal?  (unique-words "hi mom and dad") '("and" "dad" "hi" "mom") "check with base case")
+
+
+;;; test case for syllable count useing single vowel rules
+(check-equal? (syllable-count-single-vowel-rules "hi")
+              1 "base case")
+(check-equal? (syllable-count-single-vowel-rules "hello")
+              2 "base case")
+(check-equal? (syllable-count-single-vowel-rules "fry")
+              1 "edge case vowell y")
+(check-equal? (syllable-count-single-vowel-rules "bcd")
+              0 "edge case 0")
+(check-equal? (syllable-count-single-vowel-rules "yellow")
+              2 "edge case 1 with no vowel y")
+(check-equal? (syllable-count-single-vowel-rules "hope")
+              1 "edge case 1 with no vowel y")
+
+;;; test used for sylllable cout
+#|(check-equal? (syllable-count (random-elt five-syllable-words))
+              5 "base case")|#
+;;;;  tests for syllable counting useing double vowel rules
+(check-equal? (digraph-count "loon") 1 "base case")
+(check-equal? (digraph-count "lay") 1 "base case")
+(check-equal? (digraph-count "loin") 1 "base case")
+(check-equal? (digraph-count "lean") 1 "base case")
+(check-equal? (digraph-count "late") 0 "edge case")
+
+
+;;; tests of might rhyne function
+
+;;; pairs words that past test and  rhyme
+(check-equal? (might-rhyme? "ball" "call")
+              #t "base case three letters")
+(check-equal? (might-rhyme? "hall" "call")
+              #t "base case three letters")
+(check-equal? (might-rhyme? "craft" "raft")
+              #t "base case three letters")
+(check-equal? (might-rhyme? "back" "tack")
+              #t "base case three letters")
+(check-equal? (might-rhyme? "hack" "rack")
+              #t "base case three letters")
+(check-equal? (might-rhyme? "black" "tack")
+              #t "base case three letters")
+(check-equal? (might-rhyme? "hope" "rope")
+              #t "base case three letters")
+(check-equal? (might-rhyme? "sack" "rack")
+              #t "base case three letters")
+(check-equal? (might-rhyme? "tack" "rack")
+              #t "base case three letters")
+;;; output expirments for abab
+;;; note this uses small lst
+
+#|
+
+
+> (abab test-lst)
+"call ring call coming"
+>  (abab test-lst)
+"stall stall ball stall"
+>  (abab test-lst)
+"ring ring ring bring"
+>  (abab test-lst)
+"ring call something call"
+>  (abab test-lst)
+"coming stall bring ball"
+>  (abab test-lst)
+"bring something ring bring"
+>  (abab test-lst)
+"call coming ball something"
+>  (abab test-lst)
+"coming call something stall"
+>  (abab test-lst)
+"something stall ring stall"
+>  (abab test-lst)
+"coming coming ring something"
+
+;;;; test with bigger list eyrye words
+;;;; not eyrye words are not filtered for puncuation
+> (abab (filter empty-string? jane-split))
+"through not though hasnot"
+> (abab (filter empty-string? jane-split))
+"just ejaculated, just performed,"
+> (abab (filter empty-string? jane-split))
+"filledwith there with where"
+> (abab (filter empty-string? jane-split))
+"sunrise; seek house; week"
+> (abab (filter empty-string? jane-split))
+"sure,” of me,” of"
+> (abab (filter empty-string? jane-split))
+"onthe certain the in"
+> (abab (filter empty-string? jane-split))
+"experiment. eyes, improvement. raptures,"
+> (abab (filter empty-string? jane-split))
+"of andvivacity of curiosity"
+
+|#
+
+#|
+output tests for random sentance
+> (random-sentence unique-jane)
+"theworld in fever the had who."
+> (random-sentence unique-jane)
+"success best like eyes my as."
+> (random-sentence unique-jane)
+"should I water of than happy."
+> (random-sentence unique-jane)
+"it No them mustenjoy I pride."
+> (random-sentence unique-jane)
+"Mrs seemed sisters own beenhis had."
+> (random-sentence unique-jane)
+"noise much arms—however my in stopped."
+> (random-sentence unique-jane)
+"breakfast at them of Varens—another Céline."
+> (random-sentence unique-jane)
+"smoke to impossible it applied I."
+> (random-sentence unique-jane)
+"harmonious more hear to Mounting up."
+|#
+
+
+#|
+right neightbors hellper seems to be working with output expirmenrs
+> (right-neighbors-hellper "more" null lst)
+'("hear")
+> (right-neighbors-hellper "harmonious" null lst)
+'("more")
+|#
+#|
+;; output tests for right word 
+> (right-neighbors "hat" "The cat sat on the hat.  'Where is my hat?' asked the rat.  It's now a flat hat.  How 'bout that?  Will the fat rat jump on that brat cat?")
+'("How" "asked" "Where")
+> (right-neighbors "the" "The cat sat on the hat.  'Where is my hat?' asked the rat.  It's now a flat hat.  How 'bout that?  Will the fat rat jump on that brat cat?")
+'("fat" "rat" "hat")
+> (right-neighbors "The" "The cat sat on the hat.  'Where is my hat?' asked the rat.  It's now a flat hat.  How 'bout that?  Will the fat rat jump on that brat cat?")
+'("cat")
+
+|#
+
+
+#|
+
+;;; output tests of bad- lymric 
+> (aa-bb jane-split)
+stupid forlabour nothing dark most she to and
+attentively Oh leant now returned my fit fruition,and
+in bore I to
+had you the to
+stupid forlabour nothing dark most she to and
+> (aa-bb jane-split)
+me rich—merelythat—nothing and heart.”“Well,” chords me,you I converse
+sir union:therefore the on of recall openly verse
+to governess freely the
+have must saw the
+me rich—merelythat—nothing and heart.”“Well,” chords me,you I converse
+> (aa-bb jane-split)
+felt this hungry heard as to he felt
+while the and regularity.She them down alight felt
+and a madam all
+have looked and all
+felt this hungry heard as to he felt
+> (aa-bb jane-split)
+Brocklehurst sermons my he mama’s tore I streaming
+may resolved time him though wish my going
+it and the guessed
+end London brother accursed
+Brocklehurst sermons my he mama’s tore I streaming
+> (aa-bb jane-split)
+stout have those to name that before must
+sheepishly to after trees to right shook just
+she part of moment
+and done a accident
+stout have those to name that before must
+> (aa-bb jane-split)
+I me set chapter vividlywith well organ a
+hurry inher the ready ridge like it a
+Mrs out a herself,—as
+error situated of as
+I me set chapter vividlywith well organ a
+> (aa-bb jane-split)
+of as in one kneltnear skill not looking
+her just Lynn theremains room removed half-sister running
+I and an laysmashed
+me and that whitewashed
+of as in one kneltnear skill not looking
+> (aa-bb jane-split)
+that upto ofpaper dining-room Ingram andprobably of bad
+the more entranced—let Eshton I andsaid I therain—bad
+I opportunity turned:the is
+up relieved her this
+that upto ofpaper dining-room Ingram andprobably of bad
+> (aa-bb jane-split)
+to St about should burdensome How bread me—“Your
+to did audible anon sounded at They it:—“Your
+and dining-room yet hands
+was task you hands
+to St about should burdensome How bread me—“Your
+> (aa-bb jane-split)
+manner wind a purchase comes a asanded ago
+and follow I I of be nodded go
+of without what face—which
+shall you wrath:repent—resolve which
+manner wind a purchase comes a asanded ago
+> (aa-bb jane-split)
+him at cold,indeed parted you declares raceOf on
+like have Fairfax man inclined master Iimagined expectation
+I kind that room
+a Paris not aroom
+him at cold,indeed parted you declares raceOf on
+> (aa-bb jane-split)
+pale bird,the the I anatomical the of to
+a tenderness of his than I fancied to
+many as sound you
+as characterI in areyou
+pale bird,the the I anatomical the of to
+> (aa-bb jane-split)
+an such asleep the not Scatcherd turned the
+that Eyre appeared they MissesEshton an boast he
+her presents?” on Jane
+to by quite Jane
+an such asleep the not Scatcherd turned the
+> (aa-bb jane-split)
+with I waters indeed and poor pages much
+you the my Rochester you glass give such
+gone many I doing
+the a for evensurprising
+with I waters indeed and poor pages much
+> (aa-bb jane-split)
+much gate-post is relations pointing heardhysterical to Mason
+now plumy young very Far dusting to Mason
+who asolitary had long
+caprice returned she long
+much gate-post is relations pointing heardhysterical to Mason
+> (aa-bb jane-split)
+alone would suppose She may this onthe to
+proposal the Miss a beginning your like to
+a an only memory
+a and Mason?”“He thehistory
+alone would suppose She may this onthe to
+
+|#
+      
+            
